@@ -1,5 +1,7 @@
 ## Welcome to the VisiCore Content Factory℠
 
+![Content Factory Logo](https://static.visicoretech.com/img/github/content-factory-gh.png)
+
 <!--
 
 **Here are some ideas to get you started:**
