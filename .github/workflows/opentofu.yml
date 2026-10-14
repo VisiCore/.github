@@ -1,0 +1,94 @@
+name: OpenTofu CI
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: Directory to run OpenTofu commands in
+        type: string
+        required: false
+        default: '.'
+      run_fmt:
+        description: Run tofu fmt -check -recursive
+        type: boolean
+        required: false
+        default: true
+      run_validate:
+        description: Run tofu validate
+        type: boolean
+        required: false
+        default: true
+      run_test:
+        description: Run tofu test
+        type: boolean
+        required: false
+        default: true
+      run_tflint:
+        description: Run tflint
+        type: boolean
+        required: false
+        default: true
+      tofu_version:
+        description: OpenTofu version to install
+        type: string
+        required: false
+        default: '1.10.0'
+      tflint_version:
+        description: Version of tflint to install
+        type: string
+        required: false
+        default: 'v0.55.0'
+
+permissions:
+  contents: read
+
+jobs:
+  opentofu:
+    name: OpenTofu
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout caller repo
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ inputs.tofu_version }}
+          tofu_wrapper: false
+
+      - name: OpenTofu Format Check
+        if: inputs.run_fmt
+        working-directory: ${{ inputs.working_directory }}
+        run: tofu fmt -check -recursive
+
+      - name: OpenTofu Init (No Backend)
+        working-directory: ${{ inputs.working_directory }}
+        run: tofu init -backend=false
+
+      - name: OpenTofu Validate
+        if: inputs.run_validate
+        working-directory: ${{ inputs.working_directory }}
+        run: tofu validate -no-color
+
+      - name: OpenTofu Test Suite
+        if: inputs.run_test
+        working-directory: ${{ inputs.working_directory }}
+        run: tofu test -no-color
+
+      - name: Setup TFLint
+        if: inputs.run_tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: ${{ inputs.tflint_version }}
+
+      - name: Run TFLint
+        if: inputs.run_tflint
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          if [ -f .tflint.hcl ]; then
+            tflint --init
+            tflint -f compact
+          else
+            echo "No .tflint.hcl found in working directory, skipping tflint execution."
+          fi
